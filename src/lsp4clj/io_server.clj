@@ -13,7 +13,7 @@
   `:out`."
   [{:keys [in out] :as opts}]
   (server/chan-server (assoc opts
-                             :input-ch (io-chan/input-stream->input-chan in)
+                             :input-ch (io-chan/input-stream->input-chan in opts)
                              :output-ch (io-chan/output-stream->output-chan out))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}

@@ -8,10 +8,10 @@
    [clojure.string :as string])
   (:import
    (java.io
-    EOFException
-    IOException
-    InputStream
-    OutputStream)))
+     EOFException
+     IOException
+     InputStream
+     OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,7 +50,15 @@
     (let [content-length (Long/valueOf ^String (get headers "Content-Length"))
           charset-s (parse-charset (get headers "Content-Type"))
           content (read-n-bytes input content-length charset-s)]
-      (json/parse-string content keyword-function))
+      ((fn [s] (println "read-message " s) s)
+       (let [m (json/parse-string content keyword-function)]
+         (cond-> (json/parse-string content keyword-function)
+           (get m "id") (assoc :id (get m "id"))
+           (get m "jsonrpc") (assoc :jsonrpc (get m "jsonrpc"))
+           (get m "method") (assoc :method (get m "method"))
+           (get m "params") (assoc :params (get m "params"))
+           (get m "error") (assoc :error (get m "error"))
+           (get m "result") (assoc :result (get m "result"))))))
     (catch Exception _
       :parse-error)))
 

@@ -105,6 +105,36 @@
   (s/keys :opt-un [:input.completion-item/kind
                    :input.completion-item/insert-text-format]))
 
+(s/def ::inline-completion-item
+  (s/keys :req-un [::insert-text]
+          :opt-un [::filter-text ::range ::command :completion-item/insert-text-format]))
+
+;; the spec takes an InlineCompletionList too but we'll always return the array
+(s/def ::inline-completion-items (s/coll-of ::inline-completion-item))
+
+(def inline-completion-trigger-kind->enum-val
+  {:invoke 0 :automatic 1})
+
+(def enum-val->inline-completion-trigger-kind
+  (set/map-invert inline-completion-trigger-kind->enum-val))
+
+(s/def :input.inline-completion-params/trigger-kind
+  (s/and
+    enum-val->inline-completion-trigger-kind
+    (s/conformer enum-val->inline-completion-trigger-kind)))
+
+(s/def ::text string?)
+
+(s/def :input.inline-completion-params/selected-completion-info
+  (s/keys :req-un [::text ::range]))
+
+(s/def :input.inline-completion-params/context
+  (s/keys :req-un [:input.inline-completion-params/trigger-kind ::uri ::position]
+          :opt-un [:input.inline-completion-params/selected-completion-info]))
+
+(s/def ::input.inline-completion-params
+  (s/keys :req-un [:input.inline-completion-params/context]))
+
 (s/def ::version (s/and integer? (s/conformer int)))
 (s/def ::uri string?)
 
@@ -438,6 +468,14 @@
                               (get text-docyment-sync-kind :full))
                   :save {:include-text true}})))
 
+(s/def :server-capabilities/notebook-document-sync
+  (s/conformer (fn [element]
+                 {:notebook-selector (->> element
+                                          (map (fn [language] {:notebook "*"
+                                                               :cells {:language language}}))
+                                          (into []))
+                  :save true})))
+
 (s/def ::server-capabilities
   (s/keys :opt-un [:server-capabilities/code-action-provider
                    :server-capabilities/code-lens-provider
@@ -445,7 +483,8 @@
                    :server-capabilities/rename-provider
                    :server-capabilities/semantic-tokens-provider
                    :server-capabilities/signature-help-provider
-                   :server-capabilities/text-document-sync]))
+                   :server-capabilities/text-document-sync
+                   :server-capabilities/notebook-document-sync]))
 
 (s/def :json-rpc.message/jsonrpc #{"2.0"})
 (s/def :json-rpc.message/method string?)

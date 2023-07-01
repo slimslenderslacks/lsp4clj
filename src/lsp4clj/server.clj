@@ -339,7 +339,7 @@
           resp (lsp.responses/response id)]
       (try
         (trace this trace/received-request req started)
-        (let [pending-req (pending-received-request method context params)]
+        (let [pending-req (pending-received-request method (assoc context :id id) params)]
           (swap! pending-received-requests* assoc id pending-req)
           (-> pending-req
               :result-promise
