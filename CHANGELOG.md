@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v1.10.0
+
+- Add `textDocument/foldingRange` schemas.
+
+## v1.9.3
+
 ## v1.9.2
 
 ## v1.9.1
