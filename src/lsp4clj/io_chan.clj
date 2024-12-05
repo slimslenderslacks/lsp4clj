@@ -98,6 +98,30 @@
     (catch IOException _e
       ::eof)))
 
+(defn mcp-input-stream->input-chan
+  "Returns a channel which will yield parsed messages that have been read off
+  the `input`. When the input is closed, closes the channel. By default when the
+  channel closes, will close the input, but can be determined by `close?`.
+
+  Reads in a thread to avoid blocking a go block thread."
+  ([input] (mcp-input-stream->input-chan input {}))
+  ([input {:keys [close? keyword-function log-ch]
+           :or {close? true, keyword-function csk/->kebab-case-keyword}}]
+   (let [input (io/input-stream input)
+         input-reader (io/reader input)
+         messages (async/chan 1)]
+     (async/thread
+       (loop []
+         (let [line (binding [*in* input-reader] (read-line))]
+           (cond
+             ;; input closed; also close channel
+             (nil? line) (async/close! messages)
+             
+             :else (do 
+                     (async/>!! messages (json/parse-string line keyword-function))
+                     (recur))))))
+     messages)))
+
 (defn input-stream->input-chan
   "Returns a channel which will yield parsed messages that have been read off
   the `input`. When the input is closed, closes the channel. By default when the
@@ -130,7 +154,7 @@
   channel is closed, closes the output.
 
   Writes in a thread to avoid blocking a go block thread."
-  [output]
+  [output _]
   (let [output (io/output-stream output)
         messages (async/chan 1)]
     (async/thread
@@ -144,3 +168,30 @@
                 (throw e)))
             (recur)))))
     messages))
+
+(defn ^:private mcp-write-message [^OutputStream output msg log-ch]
+  (let [content (str (json/generate-string (cske/transform-keys kw->camelCaseString msg)) "\n")
+        content-bytes (.getBytes content "utf-8")]
+    (locking write-lock
+      (doto output
+         ;; headers are in ASCII, not UTF-8
+        (.write content-bytes)
+        (.flush)))))
+
+(defn mcp-output-stream->output-chan
+  "Returns a channel which expects to have messages put on it. nil values are
+  not allowed. Serializes and writes the messages to the output. When the
+  channel is closed, closes the output.
+
+  Writes in a thread to avoid blocking a go block thread."
+  [output {:keys [log-ch]}]
+  (let [output (io/output-stream output)
+        messages (async/chan 1)]
+    (async/thread
+      (with-open [writer output] ;; close output when channel closes
+        (loop []
+          (when-let [msg (async/<!! messages)]
+            (mcp-write-message writer msg log-ch)
+            (recur)))))
+    messages))
+

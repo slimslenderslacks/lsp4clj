@@ -11,10 +11,10 @@
   "Starts a chan-server, reading messages from `:in` and putting them on
   `:input-ch`, and taking messages from `:output-ch` and writing them to
   `:out`."
-  [{:keys [in out] :as opts}]
+  [{:keys [in out in-chan-factory out-chan-factory] :as opts}]
   (server/chan-server (assoc opts
-                             :input-ch (io-chan/input-stream->input-chan in opts)
-                             :output-ch (io-chan/output-stream->output-chan out))))
+                             :input-ch ((or in-chan-factory io-chan/input-stream->input-chan) in opts)
+                             :output-ch ((or out-chan-factory io-chan/output-stream->output-chan) out opts))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn stdio-server

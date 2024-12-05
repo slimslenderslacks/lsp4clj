@@ -98,6 +98,7 @@
     ;; `(p/deffered)` promise itself.
     (p/catch p CancellationException
       (fn [_]
+        ;; TODO - do we need to do anything differently here?
         (protocols.endpoint/send-notification server "$/cancelRequest" {:id id})))
     (map->PendingRequest {:p p
                           :id id
@@ -396,7 +397,8 @@
     (try
       (let [now (.instant clock)]
         (trace this trace/received-notification notif now)
-        (if (= method "$/cancelRequest")
+        ;; TODO - notifciations/cancelled also has an optional reason
+        (if (#{"$/cancelRequest" "notifications/cancelled"} method)
           (if-let [pending-req (get @pending-received-requests* (:id params))]
             (p/cancel! pending-req)
             (trace this trace/received-unmatched-cancellation-notification notif now))
