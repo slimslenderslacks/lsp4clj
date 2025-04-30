@@ -130,7 +130,7 @@
   Reads in a thread to avoid blocking a go block thread."
   ([input] (input-stream->input-chan input {}))
   ([input {:keys [close? keyword-function]
-           :or {close? true, keyword-function csk/->kebab-case-keyword}}]
+           :or {close? true, keyword-function keyword}}]
    (let [input (io/input-stream input)
          messages (async/chan 1)]
      (async/thread
@@ -170,7 +170,7 @@
     messages))
 
 (defn ^:private mcp-write-message [^OutputStream output msg log-ch]
-  (let [content (str (json/generate-string (cske/transform-keys kw->camelCaseString msg)) "\n")
+  (let [content (str (json/generate-string msg) "\n")
         content-bytes (.getBytes content "utf-8")]
     (locking write-lock
       (doto output
